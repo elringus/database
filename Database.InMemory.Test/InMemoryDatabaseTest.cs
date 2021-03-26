@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using Xunit;
 
@@ -79,6 +80,25 @@ namespace Database.InMemory.Test
             var result = database.Query<MockRecords.C>()
                 .Where(q => q.Record.BRecords.Length == 0);
             Assert.Empty(result);
+        }
+
+        [Fact]
+        public void WhenUpdatingWithOutdatedReferenceExceptionIsThrown ()
+        {
+            var reference = database.Query<MockRecords.A>()
+                .First(r => r.Record.String == "").Reference;
+            database.Update(records.RA3, records.A1);
+            Assert.Throws<DBConcurrencyException>(() => database.Update(reference, records.A2));
+        }
+
+        [Fact]
+        public void WhenUpdatingWithActualReferenceExceptionIsNotThrown ()
+        {
+            var reference = database.Query<MockRecords.A>()
+                .First(r => r.Record.String == "").Reference;
+            database.Update(reference, records.A1);
+            database.Update(reference, records.A2);
+            Assert.Equal(records.A2, database.Get<MockRecords.A>(reference));
         }
     }
 }
