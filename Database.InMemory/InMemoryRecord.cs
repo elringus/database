@@ -5,25 +5,24 @@ namespace Database.InMemory
 {
     public class InMemoryRecord
     {
-        public DateTime LastModified => lastModified;
+        public DateTime LastModified { get; private set; }
 
         private object value;
-        private DateTime lastModified;
 
         public InMemoryRecord (object value, DateTime lastModified)
         {
             this.value = value;
-            this.lastModified = lastModified;
+            LastModified = lastModified;
         }
 
         public T Get<T> () => (T)value;
 
         public void Update (InMemoryReference reference, object value)
         {
-            if (reference.LastModified != lastModified)
+            if (reference.LastModified != LastModified)
                 throw new DBConcurrencyException("Reference has missed record updates.");
             this.value = value;
-            lastModified = reference.LastModified = DateTime.Now;
+            LastModified = reference.LastModified = DateTime.Now;
         }
     }
 }
