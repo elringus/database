@@ -1,0 +1,15 @@
+# .NET SDK and Visual Studio
+*.suo
+*.user
+.vs/
+[Bb]in/
+[Oo]bj/
+[Pp]ackages/
+
+# JetBrains
+.idea/
+
+# OS-specific
+Thumbs.db
+Desktop.ini
+.DS_Store
