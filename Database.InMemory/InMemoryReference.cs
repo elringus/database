@@ -2,15 +2,16 @@
 
 namespace Database.InMemory
 {
-    public class InMemoryReference : IEquatable<InMemoryReference>
+    public abstract class InMemoryReference : IEquatable<InMemoryReference>
     {
         public string Id { get; }
+        public abstract Type RecordType { get; }
         public DateTime LastModified { get; set; }
 
-        public InMemoryReference ()
+        protected InMemoryReference ()
             : this(Guid.NewGuid().ToString(), DateTime.Now) { }
 
-        public InMemoryReference (string id, DateTime lastModified)
+        protected InMemoryReference (string id, DateTime lastModified)
         {
             Id = id;
             LastModified = lastModified;
@@ -20,7 +21,7 @@ namespace Database.InMemory
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Id == other.Id;
+            return Id == other.Id && RecordType == other.RecordType;
         }
 
         public override bool Equals (object? obj)
@@ -33,12 +34,14 @@ namespace Database.InMemory
 
         public override int GetHashCode ()
         {
-            return Id.GetHashCode();
+            return HashCode.Combine(Id, RecordType);
         }
     }
 
     public class InMemoryReference<T> : InMemoryReference, IReference<T>
     {
+        public override Type RecordType { get; } = typeof(T);
+
         public InMemoryReference () { }
 
         public InMemoryReference (string id, DateTime lastModified)

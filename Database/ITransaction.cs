@@ -2,6 +2,6 @@
 {
     public interface ITransaction
     {
-        bool WaitForCompletion ();
+        void WaitForCompletion ();
     }
 }

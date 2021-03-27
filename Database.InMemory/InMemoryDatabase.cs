@@ -1,42 +1,43 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 
 namespace Database.InMemory
 {
     public class InMemoryDatabase : IDatabase
     {
-        private readonly ConcurrentDictionary<Type,
-            ConcurrentDictionary<string, InMemoryRecord>> recordsByType = new();
+        private readonly InMemoryStore store = new();
+        private readonly object transactLock = new();
+        private InMemoryTransaction? transaction;
 
         public IReference<T> Add<T> (T record) where T : notnull
         {
             var reference = new InMemoryReference<T>();
-            GetRecords<T>()[reference.Id] = new InMemoryRecord(record, reference.LastModified);
+            store.GetRecords<T>()[reference.Id] = new InMemoryRecord(record, reference.LastModified);
             return reference;
         }
 
-        public T Get<T> (IReference<T> reference)
+        public T Get<T> (IReference<T> reference) where T : notnull
         {
-            return GetRecord(reference).Get<T>();
+            return store.GetRecord(reference).Get<T>();
         }
 
         public void Update<T> (IReference<T> reference, T record) where T : notnull
         {
-            GetRecord(reference).Update((InMemoryReference)reference, record);
+            store.GetRecord(reference).Update((InMemoryReference)reference, record);
         }
 
-        public void Remove<T> (IReference<T> reference)
+        public void Remove<T> (IReference<T> reference) where T : notnull
         {
-            var id = GetId(reference);
-            if (!GetRecords<T>().TryRemove(id, out _))
+            var id = ((InMemoryReference)reference).Id;
+            if (!store.GetRecords<T>().TryRemove(id, out _))
                 throw new KeyNotFoundException();
         }
 
-        public IEnumerable<(IReference<T> Reference, T Record)> Query<T> ()
+        public IEnumerable<(IReference<T> Reference, T Record)> Query<T> () where T : notnull
         {
-            return GetRecords<T>().Select(CreateResult);
+            return store.GetRecords<T>().Select(CreateResult);
 
             static (IReference<T>, T) CreateResult (KeyValuePair<string, InMemoryRecord> kv)
             {
@@ -45,23 +46,36 @@ namespace Database.InMemory
             }
         }
 
-        private static string GetId<T> (IReference<T> reference)
+        public ITransaction Transact (Action action)
         {
-            return ((InMemoryReference)reference).Id;
+            lock (transactLock)
+            {
+                transaction = new InMemoryTransaction();
+                TryTransactWithRetry(action, 3);
+                transaction = null;
+                return InMemoryTransaction.Completed;
+            }
         }
 
-        private InMemoryRecord GetRecord<T> (IReference<T> reference)
+        private void TryTransactWithRetry (Action action, int retryLimit)
         {
-            var id = GetId(reference);
-            return GetRecords<T>()[id];
-        }
-
-        private ConcurrentDictionary<string, InMemoryRecord> GetRecords<T> ()
-        {
-            var type = typeof(T);
-            if (!recordsByType.TryGetValue(type, out var records))
-                recordsByType[type] = records = new ConcurrentDictionary<string, InMemoryRecord>();
-            return records;
+            var retriesCount = 0;
+            while (true)
+                try
+                {
+                    action.Invoke();
+                }
+                catch (DBConcurrencyException)
+                {
+                    transaction?.Rollback(store);
+                    if (retriesCount > 3) throw;
+                    retriesCount++;
+                }
+                catch
+                {
+                    transaction?.Rollback(store);
+                    throw;
+                }
         }
     }
 }
