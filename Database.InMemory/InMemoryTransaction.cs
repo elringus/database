@@ -6,14 +6,14 @@ namespace Database.InMemory
     {
         public static readonly ITransaction Completed = new InMemoryTransaction();
         
-        private readonly Dictionary<InMemoryReference, InMemoryRecord?> snapshots = new();
+        private readonly Dictionary<InMemoryReference, StoredRecord?> snapshots = new();
 
         public void WaitForCompletion () { }
 
-        public void Snapshot (InMemoryReference reference, InMemoryRecord? record)
+        public void Snapshot (InMemoryReference reference, StoredRecord? record)
         {
             if (snapshots.ContainsKey(reference)) return;
-            snapshots[reference] = DeepClone.Copy(record) as InMemoryRecord;
+            snapshots[reference] = DeepClone.Copy(record) as StoredRecord;
         }
 
         public void Rollback (InMemoryStore store)

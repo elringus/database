@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Data;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using Database.Test;
 using Xunit;
 
 namespace Database.InMemory.Test
@@ -39,21 +39,22 @@ namespace Database.InMemory.Test
         public void WhenUpdatingMissingRecordExceptionIsThrown ()
         {
             database.Remove(records.RB2);
-            Assert.Throws<KeyNotFoundException>(() => database.Update(records.RB2, records.B1));
+            Assert.Throws<NotFoundException>(() => database.Update(records.RB2, records.B1));
         }
 
         [Fact]
         public void RemoveDeletesRecord ()
         {
             database.Remove(records.RB1);
-            Assert.Throws<KeyNotFoundException>(() => database.Get(records.RB1));
+            Assert.Null(database.FindRecord<MockRecords.B>(r => r.Id == "1"));
+            Assert.Throws<NotFoundException>(() => database.Get(records.RB1));
         }
 
         [Fact]
         public void WhenRemovingMissingRecordExceptionIsThrown ()
         {
             database.Remove(records.RB2);
-            Assert.Throws<KeyNotFoundException>(() => database.Remove(records.RB2));
+            Assert.Throws<NotFoundException>(() => database.Remove(records.RB2));
         }
 
         [Fact]
@@ -75,6 +76,40 @@ namespace Database.InMemory.Test
         }
 
         [Fact]
+        public void WhenNotExactTypeQueryReturnsEmpty ()
+        {
+            Assert.Empty(database.Query<MockRecords.Record>());
+        }
+
+        [Fact]
+        public void FindReturnsMatchingReferenceAndRecord ()
+        {
+            Assert.Equal(records.A2, database.FindRecord<MockRecords.A>(r => r.Id == "2"));
+            Assert.Equal(records.RA2, database.FindReference<MockRecords.A>(r => r.Id == "2"));
+        }
+
+        [Fact]
+        public void WhenNoMatchFindReturnsNull ()
+        {
+            Assert.Null(database.FindRecord<MockRecords.C>(r => r.Id == "0"));
+            Assert.Null(database.FindReference<MockRecords.C>(r => r.Id == "0"));
+        }
+
+        [Fact]
+        public void FirstReturnsMatchingReferenceAndRecord ()
+        {
+            Assert.Equal(records.A2, database.FirstRecord<MockRecords.A>(r => r.Id == "2"));
+            Assert.Equal(records.RA2, database.FirstReference<MockRecords.A>(r => r.Id == "2"));
+        }
+
+        [Fact]
+        public void WhenNoMatchFirstThrowsException ()
+        {
+            Assert.Throws<NotFoundException>(() => database.FirstRecord<MockRecords.C>(r => r.Id == "0"));
+            Assert.Throws<NotFoundException>(() => database.FirstReference<MockRecords.C>(r => r.Id == "0"));
+        }
+
+        [Fact]
         public void WhenNoMatchesQueryReturnsEmptyResult ()
         {
             var result = database.Query<MockRecords.C>()
@@ -87,7 +122,7 @@ namespace Database.InMemory.Test
         {
             var reference = database.FirstReference<MockRecords.A>(r => r.Id == "3");
             database.Update(records.RA3, records.A1);
-            Assert.Throws<DBConcurrencyException>(() => database.Update(reference, records.A2));
+            Assert.Throws<ConcurrencyException>(() => database.Update(reference, records.A2));
         }
 
         [Fact]
@@ -102,30 +137,89 @@ namespace Database.InMemory.Test
         [Fact]
         public void WhenTransactWithVoidActionRecordsAreNotModified ()
         {
-            database.Transact(() => { });
-            Assert.False(IsAnyMockRecordModified());
+            var transaction = database.Transact(() => { });
+            transaction.WaitForCompletion();
+            Assert.Equal(records.C1, database.Get<MockRecords.C>(records.RC1));
         }
 
-        private bool IsAnyMockRecordModified ()
+        [Fact]
+        public void TransactPerformsOperationsInOrder ()
         {
-            return IsAnyMockRecordModified<MockRecords.A>() ||
-                   IsAnyMockRecordModified<MockRecords.B>() ||
-                   IsAnyMockRecordModified<MockRecords.C>();
+            var transaction = database.Transact(() => {
+                database.Update(records.RA1, database.Get<MockRecords.A>(records.RA3));
+                database.Remove(records.RA3);
+                database.Update(records.RA2, database.Get<MockRecords.A>(records.RA1));
+            });
+            transaction.WaitForCompletion();
+            Assert.Equal(records.A3, database.Get<MockRecords.A>(records.RA2));
+            Assert.Throws<NotFoundException>(() => database.Get(records.RA3));
         }
 
-        private bool IsAnyMockRecordModified<T> () where T : MockRecords.IIdentifiable
+        [Fact, ExcludeFromCodeCoverage]
+        public void TransactionIsRolledBackOnException ()
         {
-            foreach (var record in records.Records.OfType<T>())
-                if (IsMockRecordModified<T>(record.Id))
-                    return true;
-            return false;
+            try
+            {
+                database.Transact(() => {
+                    database.Update(records.RA1, database.Get<MockRecords.A>(records.RA3));
+                    database.Remove(records.RA3);
+                    database.Update(records.RA2, database.Get<MockRecords.A>(records.RA1));
+                    database.Add(records.C1);
+                    throw new MockException();
+                });
+            }
+            catch (MockException) { }
+            Assert.Equal(records.A1.Id, database.Get<MockRecords.A>(records.RA1).Id);
+            Assert.Equal(records.A2.Id, database.Get<MockRecords.A>(records.RA2).Id);
+            Assert.Equal(records.A3.Id, database.Get<MockRecords.A>(records.RA3).Id);
+            Assert.Single(database.Query<MockRecords.C>());
         }
 
-        private bool IsMockRecordModified<T> (string id) where T : MockRecords.IIdentifiable
+        [Fact, ExcludeFromCodeCoverage]
+        public void RollbackRestoresInitialRecordValues ()
         {
-            var databaseRecord = database.FirstRecord<T>(r => r.Id == id);
-            var mockRecord = records.Records.OfType<T>().First(r => r.Id == id);
-            return !databaseRecord.Equals(mockRecord);
+            try
+            {
+                database.Transact(() => {
+                    var record = database.Get<MockRecords.C>(records.RC1);
+                    record.BRecords[0] = records.RB2;
+                    database.Update(records.RC1, record);
+                    throw new MockException();
+                });
+            }
+            catch (MockException) { }
+            var reference = database.Get<MockRecords.C>(records.RC1).BRecords[0];
+            Assert.Equal(records.B1, database.Get<MockRecords.B>(reference));
+        }
+
+        [Fact, ExcludeFromCodeCoverage]
+        public void TransactionIsRetriedOnConcurrencyException ()
+        {
+            var invocations = 0;
+            try
+            {
+                database.Transact(() => {
+                    invocations++;
+                    throw new ConcurrencyException();
+                });
+            }
+            catch (ConcurrencyException) { }
+            Assert.True(invocations > 1);
+        }
+
+        [Fact, ExcludeFromCodeCoverage]
+        public void TransactionIsNotRetriedOnOtherExceptions ()
+        {
+            var invocations = 0;
+            try
+            {
+                database.Transact(() => {
+                    invocations++;
+                    throw new MockException();
+                });
+            }
+            catch (MockException) { }
+            Assert.Equal(1, invocations);
         }
     }
 }

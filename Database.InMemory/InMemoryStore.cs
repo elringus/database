@@ -6,23 +6,26 @@ namespace Database.InMemory
     public class InMemoryStore
     {
         private readonly ConcurrentDictionary<Type,
-            ConcurrentDictionary<string, InMemoryRecord>> recordsByType = new();
+            ConcurrentDictionary<string, StoredRecord>> recordsByType = new();
 
-        public ConcurrentDictionary<string, InMemoryRecord> GetRecords<T> ()
+        public ConcurrentDictionary<string, StoredRecord> GetRecords<T> ()
         {
             return GetRecords(typeof(T));
         }
 
-        public InMemoryRecord GetRecord<T> (IReference<T> reference)
+        public StoredRecord GetRecord<T> (IReference<T> reference)
         {
             var id = ((InMemoryReference)reference).Id;
-            return GetRecords<T>()[id];
+            var records = GetRecords<T>();
+            if (records.TryGetValue(id, out var record))
+                return record;
+            throw new NotFoundException();
         }
 
-        public ConcurrentDictionary<string, InMemoryRecord> GetRecords (Type type)
+        public ConcurrentDictionary<string, StoredRecord> GetRecords (Type type)
         {
             if (!recordsByType.TryGetValue(type, out var records))
-                recordsByType[type] = records = new ConcurrentDictionary<string, InMemoryRecord>();
+                recordsByType[type] = records = new ConcurrentDictionary<string, StoredRecord>();
             return records;
         }
     }

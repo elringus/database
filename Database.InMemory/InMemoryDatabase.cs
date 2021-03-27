@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 
 namespace Database.InMemory
@@ -14,32 +13,40 @@ namespace Database.InMemory
         public IReference<T> Add<T> (T record) where T : notnull
         {
             var reference = new InMemoryReference<T>();
-            store.GetRecords<T>()[reference.Id] = new InMemoryRecord(record, reference.LastModified);
+            store.GetRecords<T>()[reference.Id] = new StoredRecord(record, reference.LastModified);
+            transaction?.Snapshot(reference, null);
             return reference;
         }
 
-        public T Get<T> (IReference<T> reference) where T : notnull
+        public T Get<T> (IReference<T> reference)
         {
-            return store.GetRecord(reference).Get<T>();
+            var inMemoryReference = (InMemoryReference)reference;
+            var storedRecord = store.GetRecord(reference);
+            transaction?.Snapshot(inMemoryReference, storedRecord);
+            return storedRecord.Get<T>();
         }
 
         public void Update<T> (IReference<T> reference, T record) where T : notnull
         {
-            store.GetRecord(reference).Update((InMemoryReference)reference, record);
+            var inMemoryReference = (InMemoryReference)reference;
+            var storedRecord = store.GetRecord(reference);
+            transaction?.Snapshot(inMemoryReference, storedRecord);
+            storedRecord.Update(inMemoryReference, record);
         }
 
-        public void Remove<T> (IReference<T> reference) where T : notnull
+        public void Remove<T> (IReference<T> reference)
         {
-            var id = ((InMemoryReference)reference).Id;
-            if (!store.GetRecords<T>().TryRemove(id, out _))
-                throw new KeyNotFoundException();
+            var inMemoryReference = (InMemoryReference)reference;
+            if (!store.GetRecords<T>().TryRemove(inMemoryReference.Id, out var record))
+                throw new NotFoundException();
+            transaction?.Snapshot(inMemoryReference, record);
         }
 
-        public IEnumerable<(IReference<T> Reference, T Record)> Query<T> () where T : notnull
+        public IEnumerable<(IReference<T> Reference, T Record)> Query<T> ()
         {
             return store.GetRecords<T>().Select(CreateResult);
 
-            static (IReference<T>, T) CreateResult (KeyValuePair<string, InMemoryRecord> kv)
+            static (IReference<T>, T) CreateResult (KeyValuePair<string, StoredRecord> kv)
             {
                 var (id, record) = kv;
                 return (new InMemoryReference<T>(id, record.LastModified), record.Get<T>());
@@ -64,11 +71,12 @@ namespace Database.InMemory
                 try
                 {
                     action.Invoke();
+                    return;
                 }
-                catch (DBConcurrencyException)
+                catch (ConcurrencyException)
                 {
                     transaction?.Rollback(store);
-                    if (retriesCount > 3) throw;
+                    if (retriesCount > 1) throw;
                     retriesCount++;
                 }
                 catch
