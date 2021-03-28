@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Database.InMemory.Test
+namespace Database.Test
 {
     [ExcludeFromCodeCoverage]
     public class MockRecords
