@@ -13,27 +13,27 @@ namespace Database.EntityFramework
             this.contextOptions = contextOptions;
         }
 
-        public IReference<T> Add<T> (T record) where T : notnull
+        public IReference<T> Add<T> (T record) where T : class
         {
             throw new NotImplementedException();
         }
 
-        public T Get<T> (IReference<T> reference)
+        public T Get<T> (IReference<T> reference) where T : class
         {
             throw new NotImplementedException();
         }
 
-        public void Update<T> (IReference<T> reference, T record) where T : notnull
+        public void Update<T> (IReference<T> reference, T record) where T : class
         {
             throw new NotImplementedException();
         }
 
-        public void Remove<T> (IReference<T> reference)
+        public void Remove<T> (IReference<T> reference) where T : class
         {
             throw new NotImplementedException();
         }
 
-        public IEnumerable<(IReference<T> Reference, T Record)> Query<T> ()
+        public IEnumerable<(IReference<T> Reference, T Record)> Query<T> () where T : class
         {
             throw new NotImplementedException();
         }
@@ -43,6 +43,6 @@ namespace Database.EntityFramework
             throw new NotImplementedException();
         }
 
-        private DbContext CreateContext () => new(contextOptions);
+        private DatabaseContext<T> CreateContext<T> () where T : class => new(contextOptions);
     }
 }
