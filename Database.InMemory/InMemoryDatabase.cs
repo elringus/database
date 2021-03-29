@@ -13,7 +13,7 @@ namespace Database.InMemory
         public IReference<T> Add<T> (T record) where T : class
         {
             var reference = new InMemoryReference<T>();
-            store.GetRecords<T>()[reference.Id] = new StoredRecord(record, reference.LastModified);
+            store.GetRecords<T>()[reference.Id] = new InMemoryRecord(record, reference.LastModified);
             transaction?.Snapshot(reference, null);
             return reference;
         }
@@ -46,7 +46,7 @@ namespace Database.InMemory
         {
             return store.GetRecords<T>().Select(CreateResult);
 
-            static (IReference<T>, T) CreateResult (KeyValuePair<string, StoredRecord> kv)
+            static (IReference<T>, T) CreateResult (KeyValuePair<string, InMemoryRecord> kv)
             {
                 var (id, record) = kv;
                 return (new InMemoryReference<T>(id, record.LastModified), record.Get<T>());
