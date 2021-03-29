@@ -2,12 +2,12 @@
 
 namespace Database.InMemory
 {
-    public class StoredRecord
+    public class InMemoryRecord
     {
         public DateTime LastModified { get; private set; }
         public object Value { get; private set; }
 
-        public StoredRecord (object value, DateTime lastModified)
+        public InMemoryRecord (object value, DateTime lastModified)
         {
             Value = value;
             LastModified = lastModified;
