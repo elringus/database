@@ -1,4 +1,4 @@
 ﻿namespace Database
 {
-    public interface IReference<T> { }
+    public interface IReference<T> where T : class { }
 }

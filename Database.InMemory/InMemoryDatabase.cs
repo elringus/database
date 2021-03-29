@@ -10,7 +10,7 @@ namespace Database.InMemory
         private readonly object transactLock = new();
         private InMemoryTransaction? transaction;
 
-        public IReference<T> Add<T> (T record) where T : notnull
+        public IReference<T> Add<T> (T record) where T : class
         {
             var reference = new InMemoryReference<T>();
             store.GetRecords<T>()[reference.Id] = new StoredRecord(record, reference.LastModified);
@@ -18,7 +18,7 @@ namespace Database.InMemory
             return reference;
         }
 
-        public T Get<T> (IReference<T> reference)
+        public T Get<T> (IReference<T> reference) where T : class
         {
             var inMemoryReference = (InMemoryReference)reference;
             var storedRecord = store.GetRecord(reference);
@@ -26,7 +26,7 @@ namespace Database.InMemory
             return storedRecord.Get<T>();
         }
 
-        public void Update<T> (IReference<T> reference, T record) where T : notnull
+        public void Update<T> (IReference<T> reference, T record) where T : class
         {
             var inMemoryReference = (InMemoryReference)reference;
             var storedRecord = store.GetRecord(reference);
@@ -34,7 +34,7 @@ namespace Database.InMemory
             storedRecord.Update(inMemoryReference, record);
         }
 
-        public void Remove<T> (IReference<T> reference)
+        public void Remove<T> (IReference<T> reference) where T : class
         {
             var inMemoryReference = (InMemoryReference)reference;
             if (!store.GetRecords<T>().TryRemove(inMemoryReference.Id, out var record))
@@ -42,7 +42,7 @@ namespace Database.InMemory
             transaction?.Snapshot(inMemoryReference, record);
         }
 
-        public IEnumerable<(IReference<T> Reference, T Record)> Query<T> ()
+        public IEnumerable<(IReference<T> Reference, T Record)> Query<T> () where T : class
         {
             return store.GetRecords<T>().Select(CreateResult);
 

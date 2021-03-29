@@ -5,7 +5,7 @@ namespace Database.InMemory
     public class InMemoryTransaction : ITransaction
     {
         public static readonly ITransaction Completed = new InMemoryTransaction();
-        
+
         private readonly Dictionary<InMemoryReference, StoredRecord?> snapshots = new();
 
         public void WaitForCompletion () { }

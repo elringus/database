@@ -38,7 +38,7 @@ namespace Database.InMemory
         }
     }
 
-    public class InMemoryReference<T> : InMemoryReference, IReference<T>
+    public class InMemoryReference<T> : InMemoryReference, IReference<T> where T : class
     {
         public override Type RecordType { get; } = typeof(T);
 

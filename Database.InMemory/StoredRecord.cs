@@ -13,7 +13,7 @@ namespace Database.InMemory
             LastModified = lastModified;
         }
 
-        public T Get<T> () => (T)Value;
+        public T Get<T> () where T : class => (T)Value;
 
         public void Update (InMemoryReference reference, object record)
         {
