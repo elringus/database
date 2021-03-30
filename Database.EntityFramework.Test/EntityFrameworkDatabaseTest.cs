@@ -1,18 +1,16 @@
 ﻿using Database.Test;
-using Microsoft.EntityFrameworkCore;
 
 namespace Database.EntityFramework.Test
 {
     public class EntityFrameworkDatabaseTest : DatabaseTest
     {
         public EntityFrameworkDatabaseTest ()
-            : base(new EntityFrameworkDatabase(CreateOptions())) { }
+            : base(CreateMockDatabase()) { }
 
-        private static DbContextOptions CreateOptions ()
+        private static EntityFrameworkDatabase CreateMockDatabase ()
         {
-            var optionsBuilder = new DbContextOptionsBuilder();
-            optionsBuilder.UseInMemoryDatabase("MockDatabase");
-            return optionsBuilder.Options;
+            var contextFactory = new MockContextFactory();
+            return new EntityFrameworkDatabase(contextFactory);
         }
     }
 }
