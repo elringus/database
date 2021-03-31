@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 
 namespace Database.EntityFramework
@@ -16,6 +18,11 @@ namespace Database.EntityFramework
         public virtual int GetId (T record)
         {
             return (int)Entry(record).Property(IdProperty).CurrentValue;
+        }
+
+        public virtual T? FirstOrDefault (int id)
+        {
+            return GetSet().FirstOrDefault(r => EF.Property<int>(r, IdProperty) == id);
         }
 
         protected override void OnModelCreating (ModelBuilder modelBuilder)
@@ -46,16 +53,19 @@ namespace Database.EntityFramework
 
         protected virtual void ConvertReferences (ModelBuilder modelBuilder)
         {
-            var converter = new ReferenceConverter();
             foreach (var entity in modelBuilder.Model.GetEntityTypes())
             foreach (var property in entity.GetProperties())
                 if (IsReference(property.ClrType))
-                    property.SetValueConverter(converter);
+                    property.SetValueConverter(new ReferenceConverter(property.ClrType));
         }
 
         protected static bool IsReference (Type type)
         {
-            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IReference<>);
+            if (type.IsArray) return IsReference(type.GetElementType()!);
+            if (!type.IsGenericType) return false;
+            if (typeof(IEnumerable).IsAssignableFrom(type))
+                return IsReference(type.GetGenericArguments()[0]);
+            return type.GetGenericTypeDefinition() == typeof(IReference<>);
         }
     }
 }

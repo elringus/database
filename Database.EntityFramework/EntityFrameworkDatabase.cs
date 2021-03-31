@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Database.EntityFramework
 {
@@ -18,28 +17,26 @@ namespace Database.EntityFramework
             var context = CreateContext<T>();
             var entry = context.GetSet().Add(record);
             context.SaveChanges();
-            return new EntityFrameworkReference<T>(context.GetId(record));
+            var id = context.GetId(record);
+            return new EntityFrameworkReference<T>(id);
         }
 
         public T Get<T> (IReference<T> reference) where T : class
         {
             var id = GetId(reference);
-            var context = CreateContext<T>();
-            var result = context.GetSet().FirstOrDefault(r => context.GetId(r) == id);
-            return result ?? throw new NotFoundException();
+            return CreateContext<T>().FirstOrDefault(id) ?? throw new NotFoundException();
         }
 
         public void Update<T> (IReference<T> reference, T record) where T : class
         {
             var id = GetId(reference);
             var context = CreateContext<T>();
-            var set = context.GetSet();
-            var storedRecord = set.FirstOrDefault(r => context.GetId(r) == id);
+            var storedRecord = context.FirstOrDefault(id);
             if (storedRecord is null) throw new NotFoundException();
             if (!ReferenceEquals(record, storedRecord))
             {
-                set.Remove(storedRecord);
-                set.Add(record);
+                context.GetSet().Remove(storedRecord);
+                context.GetSet().Add(record);
             }
             context.SaveChanges();
         }
@@ -48,10 +45,9 @@ namespace Database.EntityFramework
         {
             var id = GetId(reference);
             var context = CreateContext<T>();
-            var set = context.GetSet();
-            var record = set.FirstOrDefault(r => context.GetId(r) == id);
+            var record = context.FirstOrDefault(id);
             if (record is null) throw new NotFoundException();
-            set.Remove(record);
+            context.GetSet().Remove(record);
             context.SaveChanges();
         }
 

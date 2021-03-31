@@ -1,9 +1,6 @@
-﻿using System;
-using System.Linq;
-using System.Text.Json;
+﻿using System.Text.Json;
 using Database.Test;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Database.EntityFramework.Test
 {
@@ -13,10 +10,8 @@ namespace Database.EntityFramework.Test
 
         public override DatabaseContext<T> Create<T> () where T : class
         {
-            var type = typeof(T);
-            if (type == typeof(MockRecords.A)) return (new AContext(ContextOptions) as DatabaseContext<T>)!;
-            // if (type == typeof(MockRecords.B)) throw new NotImplementedException();
-            // if (type == typeof(MockRecords.C)) throw new NotImplementedException();
+            if (typeof(T) == typeof(MockRecords.A))
+                return (new AContext(ContextOptions) as DatabaseContext<T>)!;
             return base.Create<T>();
         }
 
@@ -34,15 +29,14 @@ namespace Database.EntityFramework.Test
             protected override void OnModelCreating (ModelBuilder modelBuilder)
             {
                 base.OnModelCreating(modelBuilder);
+
+                // InMemory provider doesn't support collections of primitive types.
+                // https://github.com/dotnet/efcore/issues/11926
                 modelBuilder.Entity<MockRecords.A>()
                     .Property(e => e.Integers)
                     .HasConversion(
                         v => JsonSerializer.Serialize(v, null),
-                        v => JsonSerializer.Deserialize<int[]>(v, null)!,
-                        new ValueComparer<int[]>(
-                            (c1, c2) => c1.SequenceEqual(c2),
-                            c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-                            c => c.ToArray()));
+                        v => JsonSerializer.Deserialize<ValueCollection<int>>(v, null)!);
             }
         }
     }
