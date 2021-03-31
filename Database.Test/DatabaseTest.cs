@@ -45,7 +45,7 @@ namespace Database.Test
         public void RemoveDeletesRecord ()
         {
             database.Remove(records.RB1);
-            Assert.Null(database.FindRecord<MockRecords.B>(r => r.Id == "1"));
+            Assert.Null(database.Find<MockRecords.B>(r => r.Id == "1"));
             Assert.Throws<NotFoundException>(() => database.Get(records.RB1));
         }
 
@@ -83,29 +83,25 @@ namespace Database.Test
         [Fact]
         public void FindReturnsMatchingReferenceAndRecord ()
         {
-            Assert.Equal(records.B2, database.FindRecord<MockRecords.B>(r => r.Bool));
-            Assert.Equal(records.RB2, database.FindReference<MockRecords.B>(r => r.Bool));
+            Assert.Equal((records.RB2, records.B2), database.Find<MockRecords.B>(r => r.Bool));
         }
 
         [Fact]
         public void WhenNoMatchFindReturnsNull ()
         {
-            Assert.Null(database.FindRecord<MockRecords.C>(r => r.Id == "0"));
-            Assert.Null(database.FindReference<MockRecords.C>(r => r.Id == "0"));
+            Assert.Null(database.Find<MockRecords.C>(r => r.Id == "0"));
         }
 
         [Fact]
         public void FirstReturnsMatchingReferenceAndRecord ()
         {
-            Assert.Equal(records.B1, database.FirstRecord<MockRecords.B>(r => r.ARecord == records.RA1));
-            Assert.Equal(records.RB1, database.FirstReference<MockRecords.B>(r => r.ARecord == records.RA1));
+            Assert.Equal((records.RB1, records.B1), database.First<MockRecords.B>(r => r.ARecord == records.RA1));
         }
 
         [Fact]
         public void WhenNoMatchFirstThrowsException ()
         {
-            Assert.Throws<NotFoundException>(() => database.FirstRecord<MockRecords.C>(r => r.Id == "0"));
-            Assert.Throws<NotFoundException>(() => database.FirstReference<MockRecords.C>(r => r.Id == "0"));
+            Assert.Throws<NotFoundException>(() => database.First<MockRecords.C>(r => r.Id == "0"));
         }
 
         [Fact]
@@ -119,7 +115,7 @@ namespace Database.Test
         [Fact]
         public void WhenUpdatingWithOutdatedReferenceExceptionIsThrown ()
         {
-            var reference = database.FirstReference<MockRecords.A>(r => r.Id == "3");
+            var (reference, _) = database.First<MockRecords.A>(r => r.Id == "3");
             database.Update(records.RA3, records.A1);
             Assert.Throws<ConcurrencyException>(() => database.Update(reference, records.A2));
         }
@@ -127,7 +123,7 @@ namespace Database.Test
         [Fact]
         public void WhenUpdatingWithActualReferenceExceptionIsNotThrown ()
         {
-            var reference = database.FirstReference<MockRecords.A>(r => r.Id == "3");
+            var (reference, _) = database.First<MockRecords.A>(r => r.Id == "3");
             database.Update(reference, records.A1);
             database.Update(reference, records.A2);
             Assert.Equal(records.A2, database.Get<MockRecords.A>(reference));
