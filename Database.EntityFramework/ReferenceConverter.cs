@@ -50,7 +50,7 @@ namespace Database.EntityFramework
         {
             if (string.IsNullOrEmpty(reference)) return null;
             var separatorIndex = reference.IndexOf(separator);
-            var id = int.Parse(reference.Substring(0, reference.Length - separatorIndex - 1));
+            var id = int.Parse(reference.Substring(0, separatorIndex));
             var recordType = Type.GetType(reference.Substring(separatorIndex + 1));
             if (recordType is null) throw new Exception($"Failed to create `{reference}` record type.");
             var referenceType = typeof(EntityFrameworkReference<>).MakeGenericType(recordType);

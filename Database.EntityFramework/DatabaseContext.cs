@@ -20,6 +20,11 @@ namespace Database.EntityFramework
             return (int)Entry(record).Property(IdProperty).CurrentValue;
         }
 
+        public virtual void SetId (T record, int id)
+        {
+            Entry(record).Property(IdProperty).CurrentValue = id;
+        }
+
         public virtual T? FirstOrDefault (int id)
         {
             return GetSet().FirstOrDefault(r => EF.Property<int>(r, IdProperty) == id);

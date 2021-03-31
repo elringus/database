@@ -37,6 +37,7 @@ namespace Database.EntityFramework
             {
                 context.GetSet().Remove(storedRecord);
                 context.GetSet().Add(record);
+                context.SetId(record, id);
             }
             context.SaveChanges();
         }
