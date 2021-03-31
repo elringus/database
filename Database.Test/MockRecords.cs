@@ -1,5 +1,4 @@
-﻿using System;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace Database.Test
 {
@@ -7,7 +6,7 @@ namespace Database.Test
     public class MockRecords
     {
         public abstract record Record (string Id);
-        public record A (string Id, int[] Integers) : Record(Id);
+        public record A (string Id, ValueCollection<int> Integers) : Record(Id);
         public record B (string Id, bool Bool, IReference<A> ARecord) : Record(Id);
         public record C (string Id, IReference<B>[] BRecords) : Record(Id);
 
@@ -21,13 +20,13 @@ namespace Database.Test
 
         public MockRecords (IDatabase database)
         {
-            A1 = new("1", new[] { 1, -2 });
+            A1 = new("1", new ValueCollection<int> { 1, -2 });
             RA1 = database.Add(A1);
 
-            A2 = new("2", Array.Empty<int>());
+            A2 = new("2", new ValueCollection<int>());
             RA2 = database.Add(A2);
 
-            A3 = new("3", new[] { 0 });
+            A3 = new("3", new ValueCollection<int> { 0 });
             RA3 = database.Add(A3);
 
             B1 = new("1", false, RA1);

@@ -67,7 +67,7 @@ namespace Database.Test
         public void QueryReturnsMultipleMatchingRecords ()
         {
             var matchingRecords = database.Query<MockRecords.A>()
-                .Where(q => q.Record.Integers.Length > 0)
+                .Where(q => q.Record.Integers.Count > 0)
                 .Select(q => q.Record).ToArray();
             Assert.Equal(2, matchingRecords.Length);
             Assert.Contains(records.A1, matchingRecords);
@@ -83,8 +83,8 @@ namespace Database.Test
         [Fact]
         public void FindReturnsMatchingReferenceAndRecord ()
         {
-            Assert.Equal(records.A2, database.FindRecord<MockRecords.A>(r => r.Id == "2"));
-            Assert.Equal(records.RA2, database.FindReference<MockRecords.A>(r => r.Id == "2"));
+            Assert.Equal(records.B2, database.FindRecord<MockRecords.B>(r => r.Bool));
+            Assert.Equal(records.RB2, database.FindReference<MockRecords.B>(r => r.Bool));
         }
 
         [Fact]
@@ -97,8 +97,8 @@ namespace Database.Test
         [Fact]
         public void FirstReturnsMatchingReferenceAndRecord ()
         {
-            Assert.Equal(records.A2, database.FirstRecord<MockRecords.A>(r => r.Id == "2"));
-            Assert.Equal(records.RA2, database.FirstReference<MockRecords.A>(r => r.Id == "2"));
+            Assert.Equal(records.B1, database.FirstRecord<MockRecords.B>(r => r.ARecord == records.RA1));
+            Assert.Equal(records.RB1, database.FirstReference<MockRecords.B>(r => r.ARecord == records.RA1));
         }
 
         [Fact]
