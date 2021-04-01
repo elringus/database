@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Collections;
-using System.Linq;
 using Microsoft.EntityFrameworkCore;
 
 namespace Database.EntityFramework
 {
     public class DatabaseContext<T> : DbContext where T : class
     {
+        public virtual DbSet<T> Records => Set<T>();
+
         protected virtual string IdProperty { get; } = "EFDbId";
         protected virtual string TimestampProperty { get; } = "EFDbTimestamp";
 
         public DatabaseContext (DbContextOptions options)
             : base(options) { }
-
-        public virtual DbSet<T> GetSet () => Set<T>();
 
         public virtual int GetId (T record)
         {
@@ -23,11 +22,6 @@ namespace Database.EntityFramework
         public virtual void SetId (T record, int id)
         {
             Entry(record).Property(IdProperty).CurrentValue = id;
-        }
-
-        public virtual T? FirstOrDefault (int id)
-        {
-            return GetSet().FirstOrDefault(r => EF.Property<int>(r, IdProperty) == id);
         }
 
         protected override void OnModelCreating (ModelBuilder modelBuilder)
