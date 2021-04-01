@@ -57,17 +57,23 @@ namespace Database.Test
         }
 
         [Fact]
-        public void QueryReturnsMatchingRecord ()
+        public void GetFirstReturnsResultOfRequestedType ()
         {
-            var matchingRecord = database.Query<MockRecords.A>().First().Record;
-            Assert.IsType<MockRecords.A>(matchingRecord);
+            Assert.IsAssignableFrom<IReference<MockRecords.A>>(database.GetFirst<MockRecords.A>()?.Reference);
+            Assert.IsType<MockRecords.A>(database.GetFirst<MockRecords.A>()?.Record);
         }
 
         [Fact]
-        public void QueryReturnsMultipleMatchingRecords ()
+        public void GetAllReturnsAllRecordsOfRequestedType ()
         {
-            var matchingRecords = database.Query<MockRecords.A>()
-                .Where(q => q.Record.Integers.Count > 0)
+            Assert.Equal(3, database.GetAll<MockRecords.A>().Count);
+        }
+
+        [Fact]
+        public void FindAllReturnsMultipleMatchingRecords ()
+        {
+            var matchingRecords = database
+                .FindAll<MockRecords.A>(r => r.Integers.Count > 0)
                 .Select(q => q.Record).ToArray();
             Assert.Equal(2, matchingRecords.Length);
             Assert.Contains(records.A1, matchingRecords);
@@ -75,9 +81,9 @@ namespace Database.Test
         }
 
         [Fact]
-        public void WhenNotExactTypeQueryReturnsEmpty ()
+        public void WhenNotExactTypeGetAllReturnsEmpty ()
         {
-            Assert.Empty(database.Query<MockRecords.Record>());
+            Assert.Empty(database.GetAll<MockRecords.Record>());
         }
 
         [Fact]
@@ -93,29 +99,15 @@ namespace Database.Test
         }
 
         [Fact]
-        public void FirstReturnsMatchingReferenceAndRecord ()
+        public void WhenNoMatchesFindAllReturnsEmptyResult ()
         {
-            Assert.Equal((records.RB1, records.B1), database.First<MockRecords.B>(r => r.ARecord == records.RA1));
-        }
-
-        [Fact]
-        public void WhenNoMatchFirstThrowsException ()
-        {
-            Assert.Throws<NotFoundException>(() => database.First<MockRecords.C>(r => r.Id == "0"));
-        }
-
-        [Fact]
-        public void WhenNoMatchesQueryReturnsEmptyResult ()
-        {
-            var result = database.Query<MockRecords.C>()
-                .Where(q => q.Record.BRecords.Length == 0);
-            Assert.Empty(result);
+            Assert.Empty(database.FindAll<MockRecords.C>(r => r.BRecords.Length == 0));
         }
 
         [Fact]
         public void WhenUpdatingWithOutdatedReferenceExceptionIsThrown ()
         {
-            var (reference, _) = database.First<MockRecords.A>(r => r.Id == "3");
+            var reference = database.Find<MockRecords.A>(r => r.Id == "3")?.Reference;
             database.Update(records.RA3, records.A1);
             Assert.Throws<ConcurrencyException>(() => database.Update(reference, records.A2));
         }
@@ -123,7 +115,7 @@ namespace Database.Test
         [Fact]
         public void WhenUpdatingWithActualReferenceExceptionIsNotThrown ()
         {
-            var (reference, _) = database.First<MockRecords.A>(r => r.Id == "3");
+            var reference = database.Find<MockRecords.A>(r => r.Id == "3")?.Reference;
             database.Update(reference, records.A1);
             database.Update(reference, records.A2);
             Assert.Equal(records.A2, database.Get<MockRecords.A>(reference));
@@ -167,7 +159,7 @@ namespace Database.Test
             Assert.Equal(records.A1.Id, database.Get<MockRecords.A>(records.RA1).Id);
             Assert.Equal(records.A2.Id, database.Get<MockRecords.A>(records.RA2).Id);
             Assert.Equal(records.A3.Id, database.Get<MockRecords.A>(records.RA3).Id);
-            Assert.Single(database.Query<MockRecords.C>());
+            Assert.Single(database.GetAll<MockRecords.C>());
         }
 
         [Fact, ExcludeFromCodeCoverage]

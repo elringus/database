@@ -42,9 +42,16 @@ namespace Database.InMemory
             transaction?.Snapshot(inMemoryReference, record);
         }
 
-        public IEnumerable<(IReference<T> Reference, T Record)> Query<T> () where T : class
+        public (IReference<T> Reference, T Record)? Find<T> (Predicate<T> predicate) where T : class
         {
-            return store.GetRecords<T>().Select(CreateResult);
+            var (id, record) = store.GetRecords<T>().FirstOrDefault(r => predicate(r.Value.Get<T>()));
+            if (record is null) return null;
+            return (new InMemoryReference<T>(id, record.LastModified), record.Get<T>());
+        }
+
+        public ICollection<(IReference<T> Reference, T Record)> FindAll<T> (Predicate<T> predicate) where T : class
+        {
+            return store.GetRecords<T>().Where(r => predicate(r.Value.Get<T>())).Select(CreateResult).ToList();
 
             static (IReference<T>, T) CreateResult (KeyValuePair<string, InMemoryRecord> kv)
             {
