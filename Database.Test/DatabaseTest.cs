@@ -122,7 +122,7 @@ namespace Database.Test
         }
 
         [Fact]
-        public void WhenTransactWithVoidActionRecordsAreNotModified ()
+        public void WhenTransactWithVoidRecordsAreNotModified ()
         {
             var transaction = database.Transact(() => { });
             transaction.WaitForCompletion();
